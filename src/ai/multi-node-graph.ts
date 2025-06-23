@@ -77,34 +77,6 @@ const getLLM = () => {
   });
 };
 
-// Common token tickers for detection (no local database dependency)
-const COMMON_TOKENS = [
-  'BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL', 'XRP', 'ADA', 'AVAX', 'DOT', 'MATIC', 'LINK', 'UNI', 'WETH', 'WBTC', 'SHIB', 'DOGE', 'LTC', 'TRX', 'ATOM', 'FTM', 'ICP', 'ALGO', 'VET', 'HBAR', 'NEAR', 'MANA', 'SAND', 'APE', 'CRO', 'LRC', 'ENJ', 'CHZ', 'THETA', 'AAVE', 'MKR', 'SNX', 'COMP', 'YFI', 'SUSHI', 'BAT', 'ZRX', 'KNC', 'REP', 'OMG', 'ANT', 'DNT', 'GNT', 'REN', 'STORJ', 'WMATIC'
-];
-
-// Enhanced token detection with better matching patterns
-const ENHANCED_TOKEN_PATTERNS = {
-  // Major cryptocurrencies with variations
-  BTC: ['BTC', 'BITCOIN', 'XBT'],
-  ETH: ['ETH', 'ETHEREUM', 'ETHER'],
-  USDT: ['USDT', 'TETHER'],
-  USDC: ['USDC', 'USD COIN'],
-  BNB: ['BNB', 'BINANCE'],
-  SOL: ['SOL', 'SOLANA'],
-  // Wrapped tokens
-  WETH: ['WETH', 'WRAPPED ETH', 'WRAPPED ETHEREUM'],
-  WBTC: ['WBTC', 'WRAPPED BTC', 'WRAPPED BITCOIN'],
-  // DeFi tokens
-  UNI: ['UNI', 'UNISWAP'],
-  AAVE: ['AAVE'],
-  COMP: ['COMP', 'COMPOUND'],
-  MKR: ['MKR', 'MAKER'],
-  // Layer 2 tokens
-  MATIC: ['MATIC', 'POLYGON'],
-  OP: ['OP', 'OPTIMISM'],
-  ARB: ['ARB', 'ARBITRUM']
-};
-
 // Address detection utilities
 const detectEthereumAddresses = (input: string): { contracts: string[], wallets: string[] } => {
   // Ethereum address pattern: 0x followed by 40 hexadecimal characters
@@ -124,67 +96,52 @@ const detectEthereumAddresses = (input: string): { contracts: string[], wallets:
   };
 };
 
-// Token ticker detection
+// Token ticker detection - let MCP handle all token discovery naturally
 const detectTokenTickers = (input: string): string[] => {
-  const upperInput = input.toUpperCase();
-  const detectedTickers: string[] = [];
+  // Extract potential token symbols (2-6 uppercase letters that could be tokens)
+  const tokenPattern = /\b[A-Z]{2,6}\b/g;
+  const matches = input.match(tokenPattern) || [];
   
-  // Check for common token tickers
-  COMMON_TOKENS.forEach(ticker => {
-    const tickerPattern = new RegExp(`\\b${ticker}\\b`, 'i');
-    if (tickerPattern.test(input)) {
-      detectedTickers.push(ticker);
-    }
-  });
+  // Filter out common English words that aren't tokens
+  const commonWords = ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'HER', 'WAS', 'ONE', 'OUR', 'OUT', 'DAY', 'GET', 'HAS', 'HIM', 'HOW', 'ITS', 'NEW', 'NOW', 'OLD', 'SEE', 'TWO', 'WHO', 'BOY', 'DID', 'HAD', 'LET', 'PUT', 'SAY', 'SHE', 'TOO', 'USE', 'WITH', 'THAT', 'THIS', 'HAVE', 'FROM', 'THEY', 'KNOW', 'WANT', 'BEEN', 'GOOD', 'MUCH', 'SOME', 'TIME', 'VERY', 'WHEN', 'COME', 'HERE', 'JUST', 'LIKE', 'LONG', 'MAKE', 'MANY', 'OVER', 'SUCH', 'TAKE', 'THAN', 'THEM', 'WELL', 'WERE'];
   
-  console.log('🪙 Detected token tickers:', detectedTickers);
+  const detectedTickers = matches.filter(match => !commonWords.includes(match));
+  
+  console.log('🪙 Detected potential token tickers (natural detection):', detectedTickers);
   return [...new Set(detectedTickers)]; // Remove duplicates
-};
-
-// Enhanced token detection with fuzzy matching
-const detectTokenTickersEnhanced = (input: string): string[] => {
-  const upperInput = input.toUpperCase();
-  const detectedTickers: Set<string> = new Set();
-  
-  // Check exact matches and variations
-  for (const [ticker, variations] of Object.entries(ENHANCED_TOKEN_PATTERNS)) {
-    for (const variation of variations) {
-      const pattern = new RegExp(`\\b${variation}\\b`, 'i');
-      if (pattern.test(input)) {
-        detectedTickers.add(ticker);
-        break; // Found match, no need to check other variations
-      }
-    }
-  }
-  
-  // Fallback to original common token detection for tokens not in enhanced patterns
-  COMMON_TOKENS.forEach(ticker => {
-    if (!ENHANCED_TOKEN_PATTERNS[ticker as keyof typeof ENHANCED_TOKEN_PATTERNS]) {
-      const tickerPattern = new RegExp(`\\b${ticker}\\b`, 'i');
-      if (tickerPattern.test(input)) {
-        detectedTickers.add(ticker);
-      }
-    }
-  });
-  
-  const result = Array.from(detectedTickers);
-  console.log('🪙 Enhanced token detection results:', result);
-  return result;
 };
 
 // Network detection utility
 const detectNetwork = (input: string): string => {
   const lowerInput = input.toLowerCase();
   
-  // Network keywords
+  // Network keywords - prioritize Base since you mentioned it
+  if (lowerInput.includes('base')) return 'base';
   if (lowerInput.includes('polygon') || lowerInput.includes('matic')) return 'polygon';
   if (lowerInput.includes('arbitrum')) return 'arbitrum';
   if (lowerInput.includes('optimism')) return 'optimism';
-  if (lowerInput.includes('base')) return 'base';
   if (lowerInput.includes('ethereum') || lowerInput.includes('eth') || lowerInput.includes('mainnet')) return 'ethereum';
   
-  // Default to ethereum if no specific network mentioned
+  // Default to ethereum, but we should analyze on multiple networks
   return 'ethereum';
+};
+
+// Get network configuration for Nodit API
+const getNetworkConfig = (network: string): string => {
+  switch (network) {
+    case 'base':
+      return 'mainnet'; // Base mainnet
+    case 'ethereum':
+      return 'mainnet'; // Ethereum mainnet
+    case 'polygon':
+      return 'mainnet'; // Polygon mainnet
+    case 'arbitrum':
+      return 'mainnet'; // Arbitrum mainnet
+    case 'optimism':
+      return 'mainnet'; // Optimism mainnet
+    default:
+      return 'mainnet';
+  }
 };
 
 // Classification node - determines if input is Web3-related
@@ -233,9 +190,8 @@ Examples:
 const comprehensiveDetectionNode = async (state: typeof ScoutState.State) => {
   const input = state.input;
   
-  console.log('🔎 Running comprehensive detection on input:', input);
-    // Detect token tickers with enhanced patterns
-  const detectedTokens = detectTokenTickersEnhanced(input);
+  console.log('🔎 Running comprehensive detection on input:', input);  // Detect token tickers with natural patterns
+  const detectedTokens = detectTokenTickers(input);
   
   // Detect Ethereum addresses (contracts and wallets)
   const addressDetection = detectEthereumAddresses(input);
@@ -358,29 +314,56 @@ const web3ResponseNode = async (state: typeof ScoutState.State) => {
       }
     }
   }
-  
   // Add wallet analysis with enhanced information
   if (state.walletData && state.walletData.length > 0) {
     analysisResults += `\n👤 **Wallet Address Analysis:**\n`;
-    for (const wallet of state.walletData) {
-      analysisResults += `• **Address**: \`${wallet.address}\`\n`;
-      analysisResults += `  - Network: ${wallet.network}\n`;
-      
-      if (wallet.error) {
-        analysisResults += `  - ❌ Error: ${wallet.error}\n`;
-        continue;
+    
+    // Group wallet data by address to show all networks
+    const walletsByAddress = state.walletData.reduce((acc: any, wallet: any) => {
+      if (!acc[wallet.address]) {
+        acc[wallet.address] = [];
       }
+      acc[wallet.address].push(wallet);
+      return acc;
+    }, {});
+    
+    for (const [address, walletDataArray] of Object.entries(walletsByAddress)) {
+      analysisResults += `• **Address**: \`${address}\`\n`;
       
-      if (wallet.isWallet !== undefined) {
-        analysisResults += `  - Type: ${wallet.isWallet ? '👤 Wallet (EOA)' : '📋 Smart Contract'}\n`;
-      }
-      
-      if (wallet.note) {
-        analysisResults += `  - Note: ${wallet.note}\n`;
-      }
-      
-      if (wallet.isContractCheck) {
-        analysisResults += `  - Verification: ${wallet.isContractCheck.result ? 'Contract confirmed' : 'Wallet confirmed'}\n`;
+      // Show data for each network
+      for (const wallet of walletDataArray as any[]) {
+        analysisResults += `  - **${wallet.networkChecked || wallet.network} Network:**\n`;
+        
+        if (wallet.error) {
+          analysisResults += `    ❌ Error: ${wallet.error}\n`;
+          continue;
+        }
+        
+        if (wallet.type) {
+          analysisResults += `    Type: ${wallet.type}\n`;
+        }
+        
+        // Native balance information
+        if (wallet.nativeBalance) {
+          analysisResults += `    Balance: ${wallet.nativeBalance.formatted} ${wallet.nativeBalance.symbol}\n`;
+        } else if (wallet.balanceError) {
+          analysisResults += `    Balance: ❌ ${wallet.balanceError}\n`;
+        } else {
+          analysisResults += `    Balance: 0.000000 ${wallet.network === 'polygon' ? 'MATIC' : 'ETH'}\n`;
+        }
+        
+        // Token activity from transfers
+        if (wallet.recentTokenActivity && wallet.recentTokenActivity.tokens.length > 0) {
+          analysisResults += `    Recent Token Activity: ${wallet.recentTokenActivity.uniqueTokens} tokens (${wallet.recentTokenActivity.transferCount} transfers)\n`;
+          wallet.recentTokenActivity.tokens.slice(0, 3).forEach((token: any, index: number) => {
+            analysisResults += `      ${index + 1}. ${token.symbol || 'Unknown'}\n`;
+          });
+        }
+        
+        // Activity level
+        if (wallet.transactionCount !== undefined) {
+          analysisResults += `    Activity: ${wallet.transactionCount} transactions (${wallet.activityLevel || 'Unknown'} activity)\n`;
+        }
       }
     }
   }
@@ -401,43 +384,103 @@ const web3ResponseNode = async (state: typeof ScoutState.State) => {
   if (insights) {
     analysisResults += insights;
   }
-  
-  console.log('🚀 Generating enhanced Web3 response');
+    // Return structured data directly instead of using LLM to format
+  console.log('🚀 Generating structured Web3 response');
   console.log('🪙 Detected tokens:', state.detectedTokens);
   console.log('📋 Detected contracts:', state.detectedContracts);
   console.log('👤 Detected wallets:', state.detectedWallets);
   console.log('🔗 MCP Connection Status:', state.mcpConnected);
   console.log('📊 Analysis Stats:', state.analysisStats);
   
-  const statusIndicator = state.mcpConnected ? 
-    '✅ Live blockchain data via Nodit MCP' : 
-    '⚠️ Offline mode - limited data available';
+  // Create structured response object
+  const structuredResponse: any = {
+    query: state.input,
+    status: state.mcpConnected ? 'live_data' : 'offline_mode',
+    data_quality: dataQuality,
+    results: {}
+  };
   
-  const prompt = `You are Scout, an expert Web3 and blockchain analysis assistant. You provide clear, informative, and engaging responses about cryptocurrency, blockchain, and DeFi topics.
-
-User Query: "${state.input}"
-
-Analysis Results:
-${analysisResults}
-
-Data Source: ${statusIndicator}
-
-Instructions:
-- Provide a conversational, helpful response based on the analysis above
-- Explain any technical terms in user-friendly language
-- If errors occurred, acknowledge them but focus on successful data
-- For contract addresses, emphasize what type of contract it is and key details
-- For wallet addresses, explain that it's a user wallet and any relevant observations
-- For token tickers, provide useful information about the token
-- Always end with a reminder about DYOR (Do Your Own Research)
-- Keep the tone friendly and informative, like you're helping a crypto enthusiast
-- Don't just dump technical data - synthesize it into useful insights
-- If multiple entities were analyzed, provide a brief summary
-
-Response length: Aim for 150-250 words unless complex analysis requires more detail.`;
-
-  const response = await model.invoke(prompt);
-  const responseText = response.content as string;
+  // Add token data
+  if (state.detectedTokens.length > 0) {
+    structuredResponse.results.tokens = state.detectedTokens.map(token => {
+      const tokenInfo = state.tokenData.find(t => t.symbol === token);
+      if (tokenInfo && tokenInfo.success && tokenInfo.metadata) {
+        const meta = tokenInfo.metadata;
+        const holderInfo = tokenInfo.holderInfo;
+        return {
+          symbol: token,
+          name: meta.name || 'Unknown',
+          contract: tokenInfo.contractAddress,
+          type: meta.type || 'ERC20',
+          total_supply: meta.totalSupply ? formatTokenSupply(meta.totalSupply, meta.decimals || 18) : null,
+          holders: holderInfo?.count || null,
+          deployed: meta.deployedAt ? new Date(meta.deployedAt).toLocaleDateString() : null,
+          risk_level: getTokenRiskLevel(meta, holderInfo)
+        };
+      } else if (tokenInfo && tokenInfo.error) {
+        return { symbol: token, error: tokenInfo.error };
+      } else {
+        return { symbol: token, status: 'detected' };
+      }
+    });
+  }
+  
+  // Add contract data
+  if (state.contractData && state.contractData.length > 0) {
+    structuredResponse.results.contracts = state.contractData.map(contract => ({
+      address: contract.address,
+      network: contract.network,
+      type: contract.contractType || null,
+      verified: contract.checks?.isContract || false,
+      token_metadata: contract.tokenMetadata?.[0] ? {
+        name: contract.tokenMetadata[0].name,
+        symbol: contract.tokenMetadata[0].symbol,
+        supply: contract.tokenMetadata[0].totalSupply && contract.tokenMetadata[0].decimals ? 
+          formatTokenSupply(contract.tokenMetadata[0].totalSupply, contract.tokenMetadata[0].decimals) : null,
+        deployed: contract.tokenMetadata[0].deployedAt ? 
+          new Date(contract.tokenMetadata[0].deployedAt).toLocaleDateString() : null
+      } : null,
+      holders: contract.tokenHolders?.count || null,
+      error: contract.error || null
+    }));
+  }
+  
+  // Add wallet data
+  if (state.walletData && state.walletData.length > 0) {
+    const walletsByAddress = state.walletData.reduce((acc: any, wallet: any) => {
+      if (!acc[wallet.address]) {
+        acc[wallet.address] = {
+          address: wallet.address,
+          networks: {}
+        };
+      }
+      acc[wallet.address].networks[wallet.networkChecked || wallet.network] = {
+        balance: wallet.nativeBalance ? {
+          amount: wallet.nativeBalance.formatted,
+          symbol: wallet.nativeBalance.symbol
+        } : null,
+        type: wallet.type || null,
+        activity_level: wallet.activityLevel || null,
+        transaction_count: wallet.transactionCount || null,
+        recent_tokens: wallet.recentTokenActivity?.tokens.slice(0, 3).map((t: any) => t.symbol) || [],
+        error: wallet.error || null
+      };
+      return acc;
+    }, {});
+    
+    structuredResponse.results.wallets = Object.values(walletsByAddress);
+  }
+  
+  // Add analysis summary
+  if (state.analysisStats && state.analysisStats.total > 0) {
+    structuredResponse.analysis_summary = {
+      total_entities: state.analysisStats.total,
+      successful: state.analysisStats.successful,
+      success_rate: Math.round((state.analysisStats.successful / state.analysisStats.total) * 100)
+    };
+  }
+  
+  const responseText = JSON.stringify(structuredResponse, null, 2);
 
   return {
     messages: [new AIMessage(responseText)],
@@ -447,7 +490,7 @@ Response length: Aim for 150-250 words unless complex analysis requires more det
 
 // Non-Web3 response node - handles non-Web3 queries
 const nonWeb3ResponseNode = async (state: typeof ScoutState.State) => {
-  const response = "I'm Scout, a Web3 and cryptocurrency specialist. While I can help with general questions, I'm optimized for Web3, blockchain, and cryptocurrency topics. Try asking me about Bitcoin, Ethereum, DeFi protocols, or any other crypto-related topic!";
+  const response = "Error: Non-Web3 query. This API handles cryptocurrency and blockchain data only.";
   
   console.log('❌ Non-Web3 query detected, providing redirect response');
   
@@ -459,7 +502,7 @@ const nonWeb3ResponseNode = async (state: typeof ScoutState.State) => {
 
 // Token not found response node
 const tokenNotFoundNode = async (state: typeof ScoutState.State) => {
-  const response = "I understand you're asking about Web3/crypto topics, but I couldn't find the specific token you mentioned in my database. My current database only contains information for a limited set of tokens (BTC, ETH, USDC, USDT, SOL, MATIC, WETH). For other tokens, please check a live crypto data provider like CoinGecko or CoinMarketCap for the most current information.";
+  const response = "Error: Token not found. Available tokens: BTC, ETH, USDC, USDT, SOL, MATIC, WETH. Use external API for other tokens.";
   
   console.log('🔍 Web3 query but no tokens detected, providing fallback response');
   
@@ -912,6 +955,178 @@ async function analyzeContractAddress(contractAddress: string, mcpManager: McpCo
   }
 }
 
+// Enhanced wallet analysis with balance and asset information
+async function analyzeWalletAddress(address: string, mcpManager: McpConnectionManager, network: string, networkConfig: string): Promise<any> {
+  try {
+    console.log(`👤 Analyzing wallet address: ${address} on ${network}/${networkConfig}`);
+    
+    const walletAnalysis: any = {
+      address,
+      network,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Step 1: Check if address is a contract or wallet using proper Nodit API
+    try {
+      // Try to get account information first
+      const accountResult = await mcpManager.callApi(
+        'getAccount',
+        network,
+        networkConfig,
+        { address }
+      );
+      
+      if (accountResult) {
+        walletAnalysis.type = accountResult.type || 'Wallet (EOA)';
+        walletAnalysis.isContract = accountResult.type === 'contract';
+        
+        // Get native balance if available
+        if (accountResult.balance !== undefined) {
+          const balanceInWei = BigInt(accountResult.balance);
+          const balanceInEth = Number(balanceInWei) / 1e18;
+          
+          walletAnalysis.nativeBalance = {
+            raw: accountResult.balance,
+            formatted: balanceInEth.toFixed(6),
+            symbol: network === 'polygon' ? 'MATIC' : 
+                   network === 'base' ? 'ETH' : 
+                   network === 'arbitrum' ? 'ETH' : 
+                   network === 'optimism' ? 'ETH' : 'ETH'
+          };
+          
+          console.log(`💰 Native balance: ${balanceInEth.toFixed(6)} ${walletAnalysis.nativeBalance.symbol}`);
+        }
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️ getAccount failed for ${address}, trying alternative methods:`, error);
+      
+      // Fallback: Try to check if it's a contract
+      try {
+        const contractCheck = await mcpManager.callApi(
+          'isContract',
+          network,
+          networkConfig,
+          { address }
+        );
+        
+        walletAnalysis.isContract = contractCheck?.result === true;
+        walletAnalysis.type = contractCheck?.result === true ? 'Smart Contract' : 'Wallet (EOA)';
+        
+      } catch (contractError) {
+        console.warn(`⚠️ isContract also failed:`, contractError);
+        walletAnalysis.type = 'Wallet (EOA)'; // Default assumption
+        walletAnalysis.isContract = false;
+      }
+    }
+    
+    // Step 2: Try to get native balance separately if not already obtained
+    if (!walletAnalysis.nativeBalance) {
+      try {
+        const balanceResult = await mcpManager.callApi(
+          'getBalance',
+          network,
+          networkConfig,
+          { address }
+        );
+        
+        if (balanceResult && balanceResult.balance !== undefined) {
+          const balanceInWei = BigInt(balanceResult.balance);
+          const balanceInEth = Number(balanceInWei) / 1e18;
+          
+          walletAnalysis.nativeBalance = {
+            raw: balanceResult.balance,
+            formatted: balanceInEth.toFixed(6),
+            symbol: network === 'polygon' ? 'MATIC' : 
+                   network === 'base' ? 'ETH' : 
+                   network === 'arbitrum' ? 'ETH' : 
+                   network === 'optimism' ? 'ETH' : 'ETH'
+          };
+          
+          console.log(`💰 Native balance (separate call): ${balanceInEth.toFixed(6)} ${walletAnalysis.nativeBalance.symbol}`);
+        }
+        
+      } catch (error) {
+        console.warn(`⚠️ Could not get native balance for ${address}:`, error);
+        walletAnalysis.balanceError = 'Balance lookup failed';
+      }
+    }
+    
+    // Step 3: Try to get ERC20 token information
+    try {
+      // Try to get token transfers to see what tokens this address interacts with
+      const transfersResult = await mcpManager.callApi(
+        'getTokenTransfers',
+        network,
+        networkConfig,
+        {
+          address,
+          limit: 50
+        }
+      );
+      
+      if (transfersResult && transfersResult.transfers && transfersResult.transfers.length > 0) {
+        // Extract unique token contracts from recent transfers
+        const tokenContracts = [...new Set(transfersResult.transfers.map((t: any) => t.contractAddress))]
+          .filter(Boolean)
+          .slice(0, 10);
+          
+        walletAnalysis.recentTokenActivity = {
+          transferCount: transfersResult.transfers.length,
+          uniqueTokens: tokenContracts.length,
+          tokens: tokenContracts.map((contract: any) => ({
+            contractAddress: contract,
+            // Try to get token symbol/name from transfer data
+            symbol: transfersResult.transfers.find((t: any) => t.contractAddress === contract)?.symbol || 'Unknown',
+            name: transfersResult.transfers.find((t: any) => t.contractAddress === contract)?.name || 'Unknown Token'
+          }))
+        };
+        
+        console.log(`📋 Found ${tokenContracts.length} unique tokens from ${transfersResult.transfers.length} recent transfers`);
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️ Could not get token transfers for ${address}:`, error);
+      walletAnalysis.tokenError = 'Token activity lookup failed';
+    }
+    
+    // Step 4: Try to get transaction count
+    try {
+      const txCountResult = await mcpManager.callApi(
+        'getTransactionCount',
+        network,
+        networkConfig,
+        { address }
+      );
+      
+      if (txCountResult && txCountResult.count !== undefined) {
+        walletAnalysis.transactionCount = txCountResult.count;
+        walletAnalysis.activityLevel = txCountResult.count > 1000 ? 'High' : 
+                                       txCountResult.count > 100 ? 'Medium' : 
+                                       txCountResult.count > 10 ? 'Low' : 'Very Low';
+                                       
+        console.log(`📊 Transaction count: ${txCountResult.count} (${walletAnalysis.activityLevel} activity)`);
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️ Could not get transaction count for ${address}:`, error);
+    }
+    
+    walletAnalysis.success = true;
+    return walletAnalysis;
+    
+  } catch (error) {
+    console.error(`❌ Wallet analysis failed for ${address}:`, error);
+    return {
+      address,
+      network,
+      error: error instanceof Error ? error.message : 'Wallet analysis failed',
+      success: false,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 // Comprehensive MCP analysis node with enhanced error handling
 const comprehensiveMcpAnalysisNode = async (state: typeof ScoutState.State) => {  console.log('🔗 Starting enhanced comprehensive MCP analysis');
   console.log('🪙 Tokens to analyze:', state.detectedTokens);
@@ -982,38 +1197,34 @@ const comprehensiveMcpAnalysisNode = async (state: typeof ScoutState.State) => {
         // Keep contract addresses in contract data
         contractData.push(contractAnalysis);
       }
+    }    // Analyze wallet addresses on multiple networks (Ethereum and Base)
+    const networksToCheck = ['ethereum', 'base']; // Check both main networks
+    
+    for (const walletAddress of state.detectedWallets) {
+      if (!state.detectedContracts.includes(walletAddress)) {
+        // Analyze on multiple networks
+        for (const networkToCheck of networksToCheck) {
+          const networkConfigToCheck = getNetworkConfig(networkToCheck);
+          console.log(`🌐 Analyzing ${walletAddress} on ${networkToCheck}/${networkConfigToCheck}`);
+          
+          const walletAnalysis = await analyzeWalletAddress(walletAddress, mcpManager, networkToCheck, networkConfigToCheck);
+          
+          // Add network info to the analysis
+          walletAnalysis.networkChecked = networkToCheck;
+          walletData.push(walletAnalysis);
+        }
+      }
     }
     
-    // Analyze wallet addresses (if any detected separately)
-    for (const walletAddress of state.detectedWallets) {
-      // For wallets detected separately, we can do basic validation
-      if (!state.detectedContracts.includes(walletAddress)) {
-        try {
-          const isContractResult = await mcpManager.callApi(
-            'isContract',
-            network,
-            networkConfig,
-            { address: walletAddress }
-          );
-          
-          walletData.push({
-            address: walletAddress,
-            network,
-            isWallet: isContractResult?.result !== true,
-            isContractCheck: isContractResult,
-            note: isContractResult?.result === true ? 
-              "This address is actually a smart contract" : 
-              "Confirmed wallet address"
-          });
-          
-        } catch (error) {
-          walletData.push({
-            address: walletAddress,
-            network,
-            isWallet: true,
-            note: "Wallet address (validation failed)",
-            error: error instanceof Error ? error.message : "Validation failed"
-          });
+    // Also analyze any addresses initially thought to be contracts but are actually wallets
+    for (const contractAnalysis of contractData) {
+      if (contractAnalysis.addressType === "wallet") {
+        // Re-analyze with enhanced wallet analysis on multiple networks
+        for (const networkToCheck of networksToCheck) {
+          const networkConfigToCheck = getNetworkConfig(networkToCheck);
+          const enhancedWalletAnalysis = await analyzeWalletAddress(contractAnalysis.address, mcpManager, networkToCheck, networkConfigToCheck);
+          enhancedWalletAnalysis.networkChecked = networkToCheck;
+          walletData.push(enhancedWalletAnalysis);
         }
       }
     }
