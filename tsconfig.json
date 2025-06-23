@@ -30,14 +30,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false
-  },
-  "include": [
+  },  "include": [
     "src/**/*"
-  ],  "exclude": [
+  ],
+  "exclude": [
     "node_modules",
     "dist",
-    "src/server.ts",
-    "src/ai/graph.ts",
-    "src/ai/templates.ts"
+    "test-*.ts",
+    "debug-*.ts"
   ]
 }

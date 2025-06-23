@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { scoutGraph } from './ai/multi-node-graph';
@@ -7,7 +7,7 @@ import { HumanMessage } from '@langchain/core/messages';
 // Load environment variables
 dotenv.config();
 
-const app = express();
+const app: Express = express();
 const port = process.env.PORT || 3001;
 
 // Middleware
