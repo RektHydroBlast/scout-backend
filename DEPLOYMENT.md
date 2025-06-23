@@ -27,12 +27,13 @@ pnpm run start
 
 ### Production Deployment
 ```bash
-# Build and start in production mode
-pnpm run prod
+# Complete production deployment (install + build + start)
+pnpm run production
 
 # Or step by step:
-pnpm run prod:build  # Build with NODE_ENV=production
-pnpm run prod:start  # Start with NODE_ENV=production
+pnpm install --frozen-lockfile  # Install dependencies
+pnpm run build                  # Build the application
+pnpm run start                  # Start the server
 
 # Simple deployment (build + start)
 pnpm run deploy
@@ -94,6 +95,12 @@ If you see "Cannot find module '/app/dist/server.js'", ensure:
 1. The build process completed successfully: `pnpm run build`
 2. The `dist/server.js` file exists
 3. The TypeScript compilation didn't have errors
+
+### Docker Build Issues
+If you encounter "rimraf: not found" in Docker builds:
+- The Dockerfile now uses `npx tsc` directly instead of the build script
+- This avoids dependency on `rimraf` during the Docker build process
+- Dev dependencies are installed during build, then pruned for production
 
 ### Port Issues
 The server runs on port 3001 by default. Change the `PORT` environment variable if needed.

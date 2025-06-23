@@ -1,22 +1,40 @@
-# Use Node.js 18 Alpine for smaller image size
 FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
+# Install system dependencies for AI packages and health check
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl \
+    ca-certificates
+
+# Use corepack for pnpm
+RUN corepack enable
+RUN corepack prepare pnpm@latest --activate
+
 # Copy package files
-COPY package*.json ./
-COPY pnpm-lock.yaml* ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm
-RUN pnpm install --frozen-lockfile --prod
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy source code AFTER installing dependencies
 COPY . .
 
-# Build the application
-RUN pnpm run build
+# Now build the application
+RUN pnpm build
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
 # Expose port
 EXPOSE 3001

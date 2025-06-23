@@ -8,22 +8,15 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "pnpm run clean && tsc",
+    "build": "tsc",
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
-    "clean": "rimraf dist",
-    "prebuild": "pnpm run clean",
-    "postbuild": "echo Build completed successfully",
     "lint": "eslint . --ext .ts",
-    "type-check": "tsc --noEmit",
+    "production": "pnpm install --frozen-lockfile && pnpm build && pnpm start",
     "deploy": "pnpm run build && pnpm run start",
-    "prod:build": "set NODE_ENV=production && pnpm run build",
-    "prod:start": "set NODE_ENV=production && pnpm run start",
-    "prod": "pnpm run prod:build && pnpm run prod:start",
     "docker:build": "docker build -t langgraph-backend .",
     "docker:run": "docker run -p 3001:3001 --env-file .env langgraph-backend",
-    "docker:dev": "docker run -p 3001:3001 --env-file .env -v %cd%:/app langgraph-backend",
-    "heroku-postbuild": "pnpm run build"
+    "docker:dev": "docker run -p 3001:3001 --env-file .env -v %cd%:/app langgraph-backend"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
@@ -44,7 +37,6 @@
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "nodemon": "^3.1.0",
-    "rimraf": "^5.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   }
